@@ -1,3 +1,4 @@
 {
-  "mongoURI": "mongodb://localhost:27017/udemy-mern-tutorial"
+  "mongoURI": "mongodb://root:example@localhost:27017/udemy-mern-tutorial?authSource=admin",
+  "jwtSecret": "secretToken"
 }
