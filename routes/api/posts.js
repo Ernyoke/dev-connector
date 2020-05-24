@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
 const chalk = require('chalk');
+const ObjectID = require('mongodb').ObjectID;
 
 const auth = require('../../middleware/auth');
 const Post = require('../../models/Post');
@@ -27,6 +28,12 @@ router.get('/', auth, async (req, res) => {
 // @desc Get post by id
 // @access Private
 router.get('/:id', auth, async (req, res) => {
+    if (!ObjectID.isValid(req.params.id)) {
+        return res.status(404).json({
+            msg: 'Invalid post id!'
+        });
+    }
+
     try {
         const post = await Post.findById(req.params.id);
         if (!post) {
@@ -36,11 +43,6 @@ router.get('/:id', auth, async (req, res) => {
         }
         return res.json(post);
     } catch (err) {
-        if (err.name === 'CastError') {
-            return res.status(404).json({
-                msg: 'Post not found!'
-            });
-        }
         console.error(chalk.red(err));
         return res.status(500).send('Server error!');
     }
@@ -88,6 +90,12 @@ router.post('/',
 // @desc Delete post
 // @access Private
 router.delete('/:id', auth, async (req, res) => {
+    if (!ObjectID.isValid(req.params.id)) {
+        return res.status(404).json({
+            msg: 'Invalid post id!'
+        });
+    }
+
     try {
         const post = await Post.findById(req.params.id);
         if (!post) {
@@ -110,13 +118,85 @@ router.delete('/:id', auth, async (req, res) => {
         });
 
     } catch (err) {
-        if (err.name === 'CastError') {
-            return res.status(404).json({
+        console.error(chalk.red(err));
+        return res.status(500).send('Server error!');
+    }
+});
+
+// @route PUT api/posts/like/:id
+// @desc Like a post
+// @access Private
+router.put('/like/:id', auth, async (req, res) => {
+    if (!ObjectID.isValid(req.params.id)) {
+        return res.status(404).json({
+            msg: 'Invalid post id!'
+        });
+    }
+
+    try {
+        const post = await Post.findById(req.params.id);
+
+        if (!post) {
+            return res.status(400).json({
                 msg: 'Post not found!'
             });
         }
-        console.error(chalk.red(err));
-        return res.status(500).send('Server error!');
+
+        // Check if the post has already been liked by the user
+        if (post.likes.filter(like => like.user.toString() === req.user.id).length > 0) {
+            return res.status(400).json({
+                msg: 'Post already liked by the user'
+            });
+        }
+
+        post.likes.unshift({
+            user: req.user.id
+        });
+
+        await post.save();
+
+        return res.json(post.likes);
+    } catch (err) {
+        console.log(chalk.red(err));
+        return res.status(500).send('Server error');
+    }
+});
+
+// @route PUT api/posts/unlike/:id
+// @desc Remove a like from a post
+// @access Private
+router.put('/unlike/:id', auth, async (req, res) => {
+    if (!ObjectID.isValid(req.params.id)) {
+        return res.status(404).json({
+            msg: 'Invalid post id!'
+        });
+    }
+
+    try {
+        const post = await Post.findById(req.params.id);
+
+        if (!post) {
+            return res.status(400).json({
+                msg: 'Post not found!'
+            });
+        }
+
+        // Check if the post has already been liked by the user
+        if (post.likes.filter(like => like.user.toString() === req.user.id).length <= 0) {
+            return res.status(400).json({
+                msg: 'Post has not yet been liked by the user!'
+            });
+        }
+
+        const removeIndex = post.likes.map(like => like.user.toString()).indexOf(req.user.id);
+        post.likes.splice(removeIndex, 1);
+
+        await post.save();
+
+        return res.json(post.likes);
+    } catch (err) {
+        console.log(chalk.red(err));
+        return res.status(500).send('Server error');
     }
 });
 
