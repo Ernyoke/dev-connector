@@ -4,9 +4,9 @@
   "description": "Social network for develpopers.",
   "main": "server.js",
   "scripts": {
-    "start": "node server",
-    "server": "nodemon server",
-    "debug": "node --inspect server"
+    "start": "node src/server",
+    "server": "nodemon src/server",
+    "debug": "node --inspect src/server"
   },
   "author": "Ervin Szilagyi",
   "license": "MIT",
@@ -22,7 +22,9 @@
     "request": "^2.88.2"
   },
   "devDependencies": {
+    "chai": "^4.2.0",
     "concurrently": "^5.1.0",
+    "mocha": "^7.2.0",
     "nodemon": "^2.0.2"
   }
 }

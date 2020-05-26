@@ -3,7 +3,7 @@ const router = express.Router();
 const { check, validationResult } = require('express-validator');
 
 const auth = require('../../middleware/auth');
-const authServ = require('../../services/authService');
+const authService = require('../../services/authService');
 const wrap = require('../wrap');
 const HttpError = require('../../middleware/HttpError');
 
@@ -11,7 +11,7 @@ const HttpError = require('../../middleware/HttpError');
 // @desc Test route
 // @access Public
 router.get('/', auth, wrap(async (req, res) => {
-    const user = await authServ.getUser(req.user.id)
+    const user = await authService.getUser(req.user.id)
     return res.json(user);
 }));
 
@@ -34,12 +34,12 @@ router.post('/',
         const { email, password } = req.body;
 
         try {
-            const token = await authServ.authenticate(email, password);
+            const token = await authService.authenticate(email, password);
             return res.status(200).json({
                 token
             })
         } catch (err) {
-            throw HttpError.builder().statusCode(401).errorMessage(err.errors);
+            throw HttpError.builder().statusCode(401).errorMessage(err.errors).build();
         }
     }));
 

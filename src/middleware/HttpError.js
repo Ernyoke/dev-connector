@@ -1,6 +1,6 @@
 class HttpErrorBuilder {
     statusCode(_statusCode) {
-        this._statusCode =  _statusCode;
+        this._statusCode = _statusCode;
         return this;
     }
 
