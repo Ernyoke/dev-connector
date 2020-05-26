@@ -1,6 +1,6 @@
 {
   "mongoURI": "mongodb://root:example@localhost:27017/udemy-mern-tutorial?authSource=admin",
   "jwtSecret": "secretToken",
-  "githubClientId": "",
-  "githubSecret": ""
+  "githubClientId": "Iv1.8ae4ab1820e36255",
+  "githubSecret": "c130c36762442c4bdaa370f6fa0353e867b27d55"
 }
