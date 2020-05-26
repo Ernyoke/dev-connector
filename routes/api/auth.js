@@ -1,29 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const chalk = require('chalk');
 const { check, validationResult } = require('express-validator');
 
 const auth = require('../../middleware/auth');
-const authServ = require('../../services/authservice');
-
-console.log("AUTH:" + JSON.stringify(authServ));
+const authServ = require('../../services/authService');
+const wrap = require('../wrap');
+const HttpError = require('../../middleware/HttpError');
 
 // @route GET api/auth
 // @desc Test route
 // @access Public
-router.get('/', auth, async (req, res) => {
-    try {
-        const user = await authServ.getUser(req.user.id)
-        return res.json(user);
-    } catch (err) {
-        console.err(chalk.red(err));
-        return res.status(400).json({
-            errors: [{
-                msg: 'Internal server error'
-            }]
-        });
-    }
-});
+router.get('/', auth, wrap(async (req, res) => {
+    const user = await authServ.getUser(req.user.id)
+    return res.json(user);
+}));
 
 // @route POST api/auth
 // @desc Authenticate user & get token
@@ -33,7 +23,7 @@ router.post('/',
         check('email', 'Please include a valid email').isEmail(),
         check('password', 'Password required').exists()
     ],
-    async (req, res) => {
+    wrap(async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({
@@ -49,10 +39,9 @@ router.post('/',
                 token
             })
         } catch (err) {
-            console.error(chalk.red(JSON.stringify(err)));
-            return res.status(400).json(err);
+            throw HttpError.builder().statusCode(401).errorMessage(err.errors);
         }
-    });
+    }));
 
 
 
