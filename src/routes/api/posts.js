@@ -1,12 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
-const chalk = require('chalk');
 const ObjectID = require('mongodb').ObjectID;
 
 const auth = require('../../middleware/auth');
 const Post = require('../../models/Post');
-const Profile = require('../../models/Profile');
 const User = require('../../models/User');
 const postService = require('../../services/postService');
 
