@@ -55,7 +55,7 @@ router.post('/',
             });
         }
 
-        const post = await postService.createNewPost(req.user.id, text);
+        const post = await postService.createNewPost(req.user.id, req.body.text);
         return res.json(post);
     }));
 

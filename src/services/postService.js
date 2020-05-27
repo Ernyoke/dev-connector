@@ -17,7 +17,7 @@ const createNewPost = async (userId, text) => {
         text: text,
         name: user.name,
         avatar: user.avatar,
-        user: req.user.id
+        user: userId
     });
 
     return await newPost.save();
