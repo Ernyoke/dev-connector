@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { check, validationResult } = require('express-validator');
+const {check, validationResult} = require('express-validator');
 const ObjectID = require('mongodb').ObjectID;
 
 const auth = require('../../middleware/auth');
@@ -29,11 +29,12 @@ router.get('/:id', auth, wrap(async (req, res) => {
         });
     }
 
-    const post = await postService.getPostById(req.params.id);
-    if (!post) {
-        throw new HttpError(404, 'Post not found!');
+    try {
+        const post = await postService.getPostById(req.params.id);
+        return res.json(post);
+    } catch (e) {
+        throw new HttpError.builder().statusCode(404).errorMessage(e.message).build();
     }
-    return res.json(post);
 }));
 
 
@@ -69,21 +70,11 @@ router.delete('/:id', auth, wrap(async (req, res) => {
         });
     }
 
-    const post = await Post.findById(req.params.id);
-    if (!post) {
-        return res.status(401).json({
-            msg: 'Post not found!'
-        });
+    try {
+        await postService.deletePost(req.params.id, req.user.id);
+    } catch (e) {
+        throw HttpError.builder().statusCode(400).errorMessage(e.message);
     }
-
-    //Check user
-    if (post.user.toString() !== req.user.id) {
-        return res.status(401).json({
-            msg: 'User not authorized to delete this post!'
-        });
-    }
-
-    await post.remove();
 
     return res.status(204).json({
         msg: 'Post removed!'
@@ -100,28 +91,12 @@ router.put('/like/:id', auth, wrap(async (req, res) => {
         });
     }
 
-    const post = await Post.findById(req.params.id);
-
-    if (!post) {
-        return res.status(400).json({
-            msg: 'Post not found!'
-        });
+    try {
+        const post = postService.likePost(req.params.id, req.user.id);
+        return res.json(post.likes);
+    } catch (e) {
+        throw new HttpError.builder().statusCode(400).errorMessage(e.message).build();
     }
-
-    // Check if the post has already been liked by the user
-    if (post.likes.filter(like => like.user.toString() === req.user.id).length > 0) {
-        return res.status(400).json({
-            msg: 'Post already liked by the user'
-        });
-    }
-
-    post.likes.unshift({
-        user: req.user.id
-    });
-
-    await post.save();
-
-    return res.json(post.likes);
 }));
 
 // @route PUT api/posts/unlike/:id
@@ -134,27 +109,12 @@ router.put('/unlike/:id', auth, wrap(async (req, res) => {
         });
     }
 
-    const post = await Post.findById(req.params.id);
-
-    if (!post) {
-        return res.status(400).json({
-            msg: 'Post not found!'
-        });
+    try {
+        const post = postService.unlikePost(req.params.id, req.user.id);
+        return res.json(post.likes);
+    } catch (e) {
+        throw new HttpError.builder().statusCode(400).errorMessage(e.message).build();
     }
-
-    // Check if the post has already been liked by the user
-    if (post.likes.filter(like => like.user.toString() === req.user.id).length <= 0) {
-        return res.status(400).json({
-            msg: 'Post has not yet been liked by the user!'
-        });
-    }
-
-    const removeIndex = post.likes.map(like => like.user.toString()).indexOf(req.user.id);
-    post.likes.splice(removeIndex, 1);
-
-    await post.save();
-
-    return res.json(post.likes);
 }));
 
 // @route POST api/posts/comment/:id
