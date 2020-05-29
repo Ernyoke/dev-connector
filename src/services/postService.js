@@ -28,9 +28,9 @@ const createNewPost = async (userId, text) => {
 };
 
 const deletePost = async (postId, userId) => {
-    const post = getPostById(postId);
+    const post = await getPostById(postId);
 
-    //Only the author of the post should be allowed to delete his posts
+    // Only the author of the post should be allowed to delete his posts
     if (post.user.toString() !== userId) {
         throw new Error('User not authorized to delete this post!');
     }
@@ -39,7 +39,7 @@ const deletePost = async (postId, userId) => {
 };
 
 const likePost = async (postId, userId) => {
-    const post = getPostById(postId);
+    const post = await getPostById(postId);
 
     // Check if the post has already been liked by the user
     if (post.likes.filter(like => like.user.toString() === userId).length > 0) {
@@ -54,7 +54,7 @@ const likePost = async (postId, userId) => {
 };
 
 const unlikePost = async (postId, userId) => {
-    const post = getPostById(postId);
+    const post = await getPostById(postId);
 
     // Check if the post has not been liked by the user
     if (post.likes.filter(like => like.user.toString() === userId).length <= 0) {
