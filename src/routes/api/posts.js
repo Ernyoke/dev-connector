@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { check, validationResult, param } = require('express-validator');
-const ObjectID = require('mongodb').ObjectID;
 
 const auth = require('../../middleware/auth');
 const postService = require('../../services/postService');

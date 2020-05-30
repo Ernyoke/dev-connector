@@ -5,6 +5,7 @@ const { check, validationResult } = require('express-validator');
 const auth = require('../../middleware/auth');
 const authService = require('../../services/authService');
 const wrap = require('../wrap');
+const handleValidationResult = require('../handleValidationResult')
 const HttpError = require('../../middleware/error/HttpError');
 
 // @route GET api/auth
@@ -24,12 +25,7 @@ router.post('/',
         check('password', 'Password required').exists()
     ],
     wrap(async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({
-                errors: errors.array()
-            });
-        }
+        handleValidationResult(validationResult(req));
 
         const { email, password } = req.body;
 
@@ -38,8 +34,8 @@ router.post('/',
             return res.status(200).json({
                 token
             })
-        } catch (err) {
-            throw HttpError.builder().statusCode(401).errorMessage(err.errors).build();
+        } catch (e) {
+            throw HttpError.builder().statusCode(401).errorMessage(e.message).build();
         }
     }));
 

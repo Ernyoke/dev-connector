@@ -1,47 +1,52 @@
 const expect = require('chai').expect;
 const sinon = require('sinon');
 
-const Post = require('../../src/models/Post');
 const User = require('../../src/models/User');
-
-const UserMock = sinon.mock(User);
-const PostMock = sinon.mock(Post);
+const Post = require('../../src/models/Post');
 
 const postService = require('../../src/services/postService');
 
 describe('#PostService', function () {
-    const user = {
-        email: 'email@test.com',
-        id: 'userID',
-        name: 'Name',
-        avatar: 'Avatar',
-        select: () => user
-    };
-
-    const post = {
-        text: 'Text',
-        name: 'Name',
-        avatar: 'Avatar',
-        user: 'userID',
-        id: 'postID',
-        likes: [{ user: 'otherUser' }],
-        comments: [{ text: 'text', user: 'userID', id: 'commentID' }],
-        remove: () => {
-        },
-        save: () => post
-    };
+    let user, post;
+    let UserMock, PostMock;
 
     const sandbox = sinon.createSandbox();
 
     beforeEach(function () {
+        user = {
+            email: 'email@test.com',
+            id: 'userID',
+            name: 'Name',
+            avatar: 'Avatar',
+            select: () => user
+        };
+
+        post = {
+            text: 'Text',
+            name: 'Name',
+            avatar: 'Avatar',
+            user: 'userID',
+            id: 'postID',
+            likes: [{ user: 'otherUser' }],
+            comments: [{ text: 'text', user: 'userID', id: 'commentID' }],
+            remove: () => {
+            },
+            save: () => post
+        };
+
+        UserMock = sinon.mock(User);
+        PostMock = sinon.mock(Post);
+
         sandbox.spy(post);
     });
 
     afterEach(function () {
+        PostMock.restore();
+        UserMock.restore();
         sandbox.restore();
     });
 
-    it('should save an user', async function () {
+    it('should save an post', async function () {
         UserMock.expects('findById').withArgs('userID').returns(user).once();
         const postMock = sinon.mock(Post.prototype).expects('save').returns(post).once();
         await postService.createNewPost('userID', 'Text');
@@ -49,7 +54,7 @@ describe('#PostService', function () {
         postMock.verify();
     });
 
-    it('should delete an user', async function () {
+    it('should delete an post', async function () {
         PostMock.expects('findById').withArgs('postID').returns(post).once();
         await postService.deletePost('postID', 'userID');
         expect(post.remove.calledOnce).to.be.true;

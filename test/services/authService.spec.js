@@ -19,8 +19,17 @@ describe('#AuthService', function () {
         id: 'userId'
     };
 
+    let userStub;
+
+    beforeEach(function () {
+        userStub = sinon.stub(User, "findOne").returns(user);
+    })
+
+    afterEach(function () {
+        userStub.restore();
+    });
+
     it('should authenticate an user', async function () {
-        sinon.stub(User, "findOne").returns(user);
         const token = 'token';
         const email = 'email@test.com';
         const password = 'password';
@@ -36,7 +45,6 @@ describe('#AuthService', function () {
     });
 
     it('should throw in case on invalid credentials', async function () {
-        sinon.stub(User, "findOne").returns(user);
         const token = 'token';
         const email = 'email@test.com';
         const password = 'password22';
@@ -47,13 +55,6 @@ describe('#AuthService', function () {
                 id: user.id
             }
         }, sinon.match.any).returns(token);
-        try {
-            wrap(await authService.authenticate(email, password))
-            expect.fail('Should not reach this line.');
-        } catch (e) {
-            expect(e.errors.includes({
-                msg: 'Invalid credentials'
-            }));
-        }
+        expect(async() => await wrap(authService.authenticate(email, password)).to.throw('Invalid credentials!'));
     });
 });

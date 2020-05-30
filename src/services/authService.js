@@ -4,14 +4,6 @@ const bcrypt = require('bcryptjs');
 
 const User = require('../models/User');
 
-const throwInvalidCredential = () => {
-    throw {
-        errors: [{
-            msg: 'Invalid credentials'
-        }]
-    };
-};
-
 const getSignedToken = payload => {
     return jwt.sign(payload, config.get('jwtSecret'), {
         expiresIn: 3600
@@ -24,12 +16,12 @@ const authenticate = async (email, password) => {
     });
 
     if (!user) {
-        throwInvalidCredential();
+        throw new Error('Invalid credentials!');
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-        throwInvalidCredential();
+        throw new Error('Invalid credentials!');
     }
 
     const payload = {
