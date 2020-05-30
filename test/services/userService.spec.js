@@ -6,8 +6,6 @@ const bcrypt = require('bcryptjs');
 
 const userService = require('../../src/services/userService');
 
-const wrap = require('../../src/routes/wrap');
-
 const User = require('../../src/models/User');
 
 describe('#UserService', function () {
@@ -45,8 +43,6 @@ describe('#UserService', function () {
         const name = 'Name';
         const email = 'email@test.com';
         const password = 'password';
-        const salt = 'salt';
-        const saltedPassword = 'saltedPassword';
         UserMock.expects('findOne').withArgs({ email }).returns(user).once();
         try {
             await userService.createUser(name, email, password);
