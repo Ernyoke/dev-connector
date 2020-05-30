@@ -12,7 +12,7 @@ module.exports = (error, req, res, next) => {
         console.error(chalk.red(error));
         return res.status(error.statusCode || 500).json({
             errors: [
-                 "Internal server error"
+                 'Internal server error'
             ]
         });
     }

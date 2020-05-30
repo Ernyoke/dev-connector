@@ -15,8 +15,7 @@ const HttpError = require('../../middleware/error/HttpError');
 // @desc Get all posts
 // @access Private
 router.get('/', auth, wrap(async (req, res) => {
-    const posts = await postService.getPosts();
-    return res.json(posts);
+    return res.json(await postService.getPosts());
 }));
 
 // @route GET api/posts/:post_id
@@ -33,8 +32,7 @@ router.get('/:post_id',
         handleValidationResult(validationResult(req));
 
         try {
-            const post = await postService.getPostById(req.params.post_id);
-            return res.json(post);
+            return res.json(await postService.getPostById(req.params.post_id));
         } catch (e) {
             throw new HttpError.builder().statusCode(404).errorMessage(e.message).build();
         }
@@ -54,8 +52,7 @@ router.post('/',
     wrap(async (req, res) => {
         handleValidationResult(validationResult(req));
 
-        const post = await postService.createNewPost(req.user.id, req.body.text);
-        return res.json(post);
+        return res.json(postService.createNewPost(req.user.id, req.body.text));
     }));
 
 // @route DELETE api/posts/:post_id
@@ -73,13 +70,13 @@ router.delete('/:post_id',
 
         try {
             await postService.deletePost(req.params.post_id, req.user.id);
+
+            return res.status(204).json({
+                msg: 'Post removed!'
+            });
         } catch (e) {
             throw HttpError.builder().statusCode(400).errorMessage(e.message);
         }
-
-        return res.status(204).json({
-            msg: 'Post removed!'
-        });
     }));
 
 // @route PUT api/posts/like/:post_id
@@ -124,10 +121,10 @@ router.put('/unlike/:post_id',
         }
     }));
 
-// @route POST api/posts/comment/:id
+// @route POST api/posts/comment/:post_id
 // @desc Comment on a post
 // @access Private
-router.post('/comment/:id',
+router.post('/comment/:pos_id',
     [
         auth,
         [
@@ -138,7 +135,7 @@ router.post('/comment/:id',
         handleValidationResult(validationResult(req));
 
         try {
-            const post = postService.createComment(req.body.text, req.params.id, req.user.id);
+            const post = postService.createComment(req.body.text, req.params.post_id, req.user.id);
             return res.json(post.comments);
         } catch (e) {
             throw HttpError.builder().statusCode(400).errorMessage(e.message).build();

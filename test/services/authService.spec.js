@@ -22,7 +22,7 @@ describe('#AuthService', function () {
     let userStub;
 
     beforeEach(function () {
-        userStub = sinon.stub(User, "findOne").returns(user);
+        userStub = sinon.stub(User, 'findOne').returns(user);
     })
 
     afterEach(function () {
