@@ -1,5 +1,5 @@
 const chalk = require('chalk');
-const HttpError = require('./HttpError');
+const HttpError = require('./error/HttpError');
 
 module.exports = (error, req, res, next) => {
     if (error instanceof HttpError) {

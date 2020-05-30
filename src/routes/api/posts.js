@@ -1,15 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const {check, validationResult} = require('express-validator');
+const { check, validationResult } = require('express-validator');
 const ObjectID = require('mongodb').ObjectID;
 
 const auth = require('../../middleware/auth');
-const Post = require('../../models/Post');
-const User = require('../../models/User');
 const postService = require('../../services/postService');
+const UnauthorizedActionError = require('../../services/error/UnauthorizedActionError');
 
 const wrap = require('../wrap');
-const HttpError = require('../../middleware/HttpError');
+const HttpError = require('../../middleware/error/HttpError');
 
 // @route GET api/posts
 // @desc Get all posts
@@ -95,7 +94,7 @@ router.put('/like/:id', auth, wrap(async (req, res) => {
         const post = postService.likePost(req.params.id, req.user.id);
         return res.json(post.likes);
     } catch (e) {
-        throw new HttpError.builder().statusCode(400).errorMessage(e.message).build();
+        throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
     }
 }));
 
@@ -113,7 +112,7 @@ router.put('/unlike/:id', auth, wrap(async (req, res) => {
         const post = postService.unlikePost(req.params.id, req.user.id);
         return res.json(post.likes);
     } catch (e) {
-        throw new HttpError.builder().statusCode(400).errorMessage(e.message).build();
+        throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
     }
 }));
 
@@ -135,53 +134,27 @@ router.post('/comment/:id',
             });
         }
 
-        const user = await User.findById(req.user.id).select('-password');
-        const post = await Post.findById(req.params.id);
-
-        const newComment = {
-            text: req.body.text,
-            name: user.name,
-            avatar: user.avatar,
-            user: req.user.id
-        };
-
-        post.comments.unshift(newComment);
-
-        await post.save();
-
-        return res.json(post.comments);
+        try {
+            const post = postService.createComment(req.body.text, req.params.id, req.user.id);
+            return res.json(post.comments);
+        } catch (e) {
+            throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
+        }
     }));
 
-// @route DELETE api/posts/comment/:id/:comment_id
+// @route DELETE api/posts/comment/:post_id/:comment_id
 // @desc Delete a comment from a post
 // @access Private
-router.delete('/comment/:id/:comment_id', auth, wrap(async (req, res) => {
-    const post = await Post.findById(req.params.id);
-
-    // Pull out the comment
-    const comment = post.comments.find(comment => comment.id === req.params.comment_id);
-
-    // Make sure comment exists
-    if (!comment) {
-        return res.status(404).json({
-            msg: 'Comment does not exist!'
-        });
+router.delete('/comment/:post_id/:comment_id', auth, wrap(async (req, res) => {
+    try {
+        const post = postService.deleteComment(req.body.comment_id, req.params.post_id, req.user.id);
+        return res.json(post.comments);
+    } catch (e) {
+        if (e instanceof UnauthorizedActionError) {
+            throw HttpError.builder().statusCode(401).errorMessage(e.message).build();
+        }
+        throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
     }
-
-    // Check user
-    if (comment.user.toString() !== req.user.id) {
-        return res.status(401).json({
-            msg: 'User not authorized to delete this comment!'
-        })
-    }
-
-    const removeIndex = post.comments
-        .map(comment => comment.user.toString())
-        .indexOf(req.user.id);
-
-    post.comments.splice(removeIndex, 1);
-
-    post.save();
 
     return res.json(post.comments);
 }));

@@ -8,7 +8,6 @@ const UserMock = sinon.mock(User);
 const PostMock = sinon.mock(Post);
 
 const postService = require('../../src/services/postService');
-const wrap = require('../../src/routes/wrap');
 
 describe('#PostService', function () {
     const user = {
@@ -25,7 +24,8 @@ describe('#PostService', function () {
         avatar: 'Avatar',
         user: 'userID',
         id: 'postID',
-        likes: [{user: 'otherUser'}],
+        likes: [{ user: 'otherUser' }],
+        comments: [{ text: 'text', user: 'userID', id: 'commentID' }],
         remove: () => {
         },
         save: () => post
@@ -44,14 +44,14 @@ describe('#PostService', function () {
     it('should save an user', async function () {
         UserMock.expects('findById').withArgs('userID').returns(user).once();
         const postMock = sinon.mock(Post.prototype).expects('save').returns(post).once();
-        wrap(await postService.createNewPost('userID', 'Text'));
+        await postService.createNewPost('userID', 'Text');
         UserMock.verify();
         postMock.verify();
     });
 
     it('should delete an user', async function () {
         PostMock.expects('findById').withArgs('postID').returns(post).once();
-        wrap(await postService.deletePost('postID', 'userID'));
+        await postService.deletePost('postID', 'userID');
         expect(post.remove.calledOnce).to.be.true;
         PostMock.verify();
     });
@@ -72,4 +72,24 @@ describe('#PostService', function () {
         expect(actualPost.likes.length).to.be.equal(numberOfLikes - 1);
         expect(post.save.calledOnce).to.be.true;
     });
+
+    it('should create a new comment', async function () {
+        const numberOfComments = post.comments.length;
+        UserMock.expects('findById').withArgs('userID').returns(user).once();
+        PostMock.expects('findById').withArgs('postID').returns(post).once();
+        const actualPost = await postService.createComment('commentText', 'postID', 'userID');
+        expect(actualPost.comments[0].text).to.be.equal('commentText');
+        expect(actualPost.comments.length).to.be.equal(numberOfComments + 1);
+        expect(post.save.calledOnce).to.be.true;
+    });
+
+    it('should remove an existing comment', async function () {
+        const numberOfComments = post.comments.length;
+        UserMock.expects('findById').withArgs('userID').returns(user).once();
+        PostMock.expects('findById').withArgs('postID').returns(post).once();
+        const actualPost = await postService.deleteComment('commentID', 'postID', 'userID');
+        expect(actualPost.comments.length).to.be.equal(numberOfComments - 1);
+        expect(post.save.calledOnce).to.be.true;
+    });
+
 });
