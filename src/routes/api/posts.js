@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { check, validationResult } = require('express-validator');
+const { check, validationResult, param } = require('express-validator');
 const ObjectID = require('mongodb').ObjectID;
 
 const auth = require('../../middleware/auth');
@@ -8,6 +8,8 @@ const postService = require('../../services/postService');
 const UnauthorizedActionError = require('../../services/error/UnauthorizedActionError');
 
 const wrap = require('../wrap');
+const handleValidationResult = require('../handleValidationResult');
+const objectIdValidator = require('../../middleware/objectIdValidator');
 const HttpError = require('../../middleware/error/HttpError');
 
 // @route GET api/posts
@@ -18,23 +20,26 @@ router.get('/', auth, wrap(async (req, res) => {
     return res.json(posts);
 }));
 
-// @route GET api/posts/:id
+// @route GET api/posts/:post_id
 // @desc Get post by id
 // @access Private
-router.get('/:id', auth, wrap(async (req, res) => {
-    if (!ObjectID.isValid(req.params.id)) {
-        return res.status(404).json({
-            msg: 'Invalid post id!'
-        });
-    }
+router.get('/:post_id',
+    [
+        auth,
+        [
+            param('post_id').custom(objectIdValidator)
+        ]
+    ],
+    wrap(async (req, res) => {
+        handleValidationResult(validationResult(req));
 
-    try {
-        const post = await postService.getPostById(req.params.id);
-        return res.json(post);
-    } catch (e) {
-        throw new HttpError.builder().statusCode(404).errorMessage(e.message).build();
-    }
-}));
+        try {
+            const post = await postService.getPostById(req.params.post_id);
+            return res.json(post);
+        } catch (e) {
+            throw new HttpError.builder().statusCode(404).errorMessage(e.message).build();
+        }
+    }));
 
 
 // @route POST api/posts
@@ -48,73 +53,77 @@ router.post('/',
         ]
     ],
     wrap(async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({
-                errors: errors.array()
-            });
-        }
+        handleValidationResult(validationResult(req));
 
         const post = await postService.createNewPost(req.user.id, req.body.text);
         return res.json(post);
     }));
 
-// @route DELETE api/posts/:id
+// @route DELETE api/posts/:post_id
 // @desc Delete post
 // @access Private
-router.delete('/:id', auth, wrap(async (req, res) => {
-    if (!ObjectID.isValid(req.params.id)) {
-        return res.status(404).json({
-            msg: 'Invalid post id!'
+router.delete('/:post_id',
+    [
+        auth,
+        [
+            param('post_id').custom(objectIdValidator)
+        ]
+    ],
+    wrap(async (req, res) => {
+        handleValidationResult(validationResult(req));
+
+        try {
+            await postService.deletePost(req.params.post_id, req.user.id);
+        } catch (e) {
+            throw HttpError.builder().statusCode(400).errorMessage(e.message);
+        }
+
+        return res.status(204).json({
+            msg: 'Post removed!'
         });
-    }
+    }));
 
-    try {
-        await postService.deletePost(req.params.id, req.user.id);
-    } catch (e) {
-        throw HttpError.builder().statusCode(400).errorMessage(e.message);
-    }
-
-    return res.status(204).json({
-        msg: 'Post removed!'
-    });
-}));
-
-// @route PUT api/posts/like/:id
+// @route PUT api/posts/like/:post_id
 // @desc Like a post
 // @access Private
-router.put('/like/:id', auth, wrap(async (req, res) => {
-    if (!ObjectID.isValid(req.params.id)) {
-        return res.status(404).json({
-            msg: 'Invalid post id!'
-        });
-    }
+router.put('/like/:post_id',
+    [
+        auth,
+        [
+            param('post_id').custom(objectIdValidator)
+        ]
+    ],
+    wrap(async (req, res) => {
+        handleValidationResult(validationResult(req));
 
-    try {
-        const post = postService.likePost(req.params.id, req.user.id);
-        return res.json(post.likes);
-    } catch (e) {
-        throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
-    }
-}));
+        try {
+            const post = await postService.likePost(req.params.post_id, req.user.id);
+            return res.json(post.likes);
+        } catch (e) {
+            throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
+        }
+    }));
 
-// @route PUT api/posts/unlike/:id
+// @route PUT api/posts/unlike/:post_id
 // @desc Remove a like from a post
 // @access Private
-router.put('/unlike/:id', auth, wrap(async (req, res) => {
-    if (!ObjectID.isValid(req.params.id)) {
-        return res.status(404).json({
-            msg: 'Invalid post id!'
-        });
-    }
+router.put('/unlike/:post_id',
+    [
+        auth,
+        [
+            param('post_id').custom(objectIdValidator)
+        ]
+    ],
+    wrap(async (req, res) => {
+        handleValidationResult(validationResult(req));
 
-    try {
-        const post = postService.unlikePost(req.params.id, req.user.id);
-        return res.json(post.likes);
-    } catch (e) {
-        throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
-    }
-}));
+        try {
+            const post = await postService.unlikePost(req.params.post_id, req.user.id);
+            return res.json(post.likes);
+        } catch (e) {
+            throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
+        }
+    }));
 
 // @route POST api/posts/comment/:id
 // @desc Comment on a post
@@ -127,12 +136,7 @@ router.post('/comment/:id',
         ]
     ],
     wrap(async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({
-                errors: errors.array()
-            });
-        }
+        handleValidationResult(validationResult(req));
 
         try {
             const post = postService.createComment(req.body.text, req.params.id, req.user.id);
@@ -145,18 +149,26 @@ router.post('/comment/:id',
 // @route DELETE api/posts/comment/:post_id/:comment_id
 // @desc Delete a comment from a post
 // @access Private
-router.delete('/comment/:post_id/:comment_id', auth, wrap(async (req, res) => {
-    try {
-        const post = postService.deleteComment(req.body.comment_id, req.params.post_id, req.user.id);
-        return res.json(post.comments);
-    } catch (e) {
-        if (e instanceof UnauthorizedActionError) {
-            throw HttpError.builder().statusCode(401).errorMessage(e.message).build();
-        }
-        throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
-    }
+router.delete('/comment/:post_id/:comment_id',
+    [
+        auth,
+        [
+            param('post_id').custom(objectIdValidator),
+            param('comment_id').custom(objectIdValidator)
+        ]
+    ],
+    wrap(async (req, res) => {
+        handleValidationResult(validationResult(req));
 
-    return res.json(post.comments);
-}));
+        try {
+            const post = postService.deleteComment(req.body.comment_id, req.params.post_id, req.user.id);
+            return res.json(post.comments);
+        } catch (e) {
+            if (e instanceof UnauthorizedActionError) {
+                throw HttpError.builder().statusCode(401).errorMessage(e.message).build();
+            }
+            throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
+        }
+    }));
 
 module.exports = router;

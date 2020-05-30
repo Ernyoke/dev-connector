@@ -5,7 +5,7 @@ const { check, validationResult } = require('express-validator');
 const auth = require('../../middleware/auth');
 const authService = require('../../services/authService');
 const wrap = require('../wrap');
-const HttpError = require('../../middleware/HttpError');
+const HttpError = require('../../middleware/error/HttpError');
 
 // @route GET api/auth
 // @desc Test route
