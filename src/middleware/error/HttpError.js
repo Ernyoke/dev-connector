@@ -1,24 +1,31 @@
 class HttpErrorBuilder {
+    _errors = [];
+
     statusCode(_statusCode) {
         this._statusCode = _statusCode;
         return this;
     }
 
     errorMessage(_errorMessage) {
-        this._errorMessage = _errorMessage;
+        this._errors.push(_errorMessage);
+        return this;
+    }
+
+    errors(_errors) {
+        this._errors = errors;
         return this;
     }
 
     build() {
-        return new HttpError(this._statusCode, this._errorMessage);
+        return new HttpError(this._statusCode, this._errors);
     }
 }
 
 class HttpError extends Error {
-    constructor(statusCode, errorMessages) {
+    constructor(statusCode, errors) {
         super();
         this.statusCode = statusCode;
-        this.errorMessages = errorMessages;
+        this.errors = errors;
     }
 
     static builder() {

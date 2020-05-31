@@ -1,16 +1,16 @@
 const chalk = require('chalk');
 const HttpError = require('./error/HttpError');
 
-module.exports = (error, req, res, next) => {
-    if (error instanceof HttpError) {
-        return res.status(error.statusCode).json({
-            errors: error.errorMessages
+module.exports = (err, req, res, next) => {
+    if (err instanceof HttpError) {
+        return res.status(err.statusCode).json({
+            errors: err.errors
         });
     }
 
-    if (error) {
-        console.error(chalk.red(error));
-        return res.status(error.statusCode || 500).json({
+    if (err) {
+        console.error(chalk.red(err));
+        return res.status(err.statusCode || 500).json({
             errors: [
                  'Internal server error'
             ]

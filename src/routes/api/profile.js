@@ -3,152 +3,98 @@ const router = express.Router();
 const request = require('request');
 const config = require('config');
 const chalk = require('chalk');
-const { check, validationResult } = require('express-validator');
+const { check, validationResult, param } = require('express-validator');
 
 const auth = require('../../middleware/auth');
 const Profile = require('../../models/Profile');
 const User = require('../../models/User');
 const wrap = require('../wrap');
+const handleValidationResult = require('../handleValidationResult');
+
+const profileService = require('../../services/profileService');
+const HttpError = require('../../middleware/error/HttpError');
+const objectIdValidator = require('../../middleware/objectIdValidator');
 
 // @route GET api/profile/me
 // @desc Get current user's profile
 // @access Private
-router.get('/me', auth, wrap(async (req, res) => {
-    const profile = await Profile.findOne({
-        user: req.user.id
-    }).populate('user', ['name', 'avatar']);
-    if (!profile) {
-        return res.status(400).json({
-            msg: 'There is no profile for this user'
-        });
-    }
-    return res.json(profile);
-}));
+router.get('/me',
+    auth,
+    wrap(async (req, res) => {
+        try {
+            return res.json(await profileService.getProfile(req.user.user_id));
+        } catch (e) {
+            throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
+        }
+    }));
 
 // @route POST api/profile
 // @desc Create or update a profile for an user
 // @access Private
-router.post('/', [
-    auth,
+router.post('/',
     [
-        check('status', 'Status is required').not().isEmpty(),
-        check('skills', 'Skills is required').not().isEmail()
-    ]
-], wrap(async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({
-            errors: errors.array()
-        });
-    }
+        auth,
+        [
+            check('status', 'Status is required').not().isEmpty(),
+            check('skills', 'Skills is required').not().isEmail()
+        ]
+    ], wrap(async (req, res) => {
+        handleValidationResult(validationResult(req));
 
-    const { company, website, location, bio, status, githubusername, skills, youtube, twitter, linkedin } = req.body;
-
-    const profileFields = {
-        user: req.user.id
-    };
-
-    if (company) {
-        profileFields.company = company;
-    }
-    if (website) {
-        profileFields.website = website;
-    }
-    if (location) {
-        profileFields.location = location;
-    }
-    if (bio) {
-        profileFields.bio = bio;
-    }
-    if (status) {
-        profileFields.status = status;
-    }
-    if (githubusername) {
-        profileFields.githubusername = githubusername;
-    }
-    if (skills) {
-        profileFields.skills = skills.split(',').map(skill => skill.trim());
-    }
-
-    profileFields.social = {};
-    if (youtube) {
-        profileFields.social.youtube = youtube;
-    }
-    if (twitter) {
-        profileFields.social.twitter = twitter;
-    }
-    if (linkedin) {
-        profileFields.social.linkedin = linkedin;
-    }
-
-    let profile = await Profile.findOne({ user: req.user.id });
-    if (profile) {
-        profile = await Profile.findOneAndUpdate({
-            user: req.user.id
-        }, {
-            $set: profileFields
-        }, {
-            new: true
-        });
-    } else {
-        profile = new Profile(profileFields);
-        await profile.save();
-    }
-    return res.status(201).json(profile);
-}));
+        return res.status(201).json(await profileService.createProfile(req.user.id, req.body));
+    }));
 
 // @route GET api/profile
 // @desc Get all profiles 
 // @access Public
-router.get('/', wrap(async (req, res) => {
-    const profiles = await Profile.find().populate('user', ['name', 'avatar']);
-    return res.json(profiles);
-}));
+router.get('/',
+    wrap(async (req, res) => {
+        return res.json(await profileService.getProfiles());
+    }));
 
 // @route GET api/profile/user/:user_id
 // @desc Get all profile by user id
 // @access Public
-router.get('/user/:user_id', wrap(async (req, res) => {
-    try {
-        const profile = await Profile.findOne({
-            user: req.params.user_id
-        }).populate('user', ['name', 'avatar']);
+router.get('/user/:user_id',
+    [
+        [
+            param('user_id').custom(objectIdValidator)
+        ]
+    ],
+    wrap(async (req, res) => {
+        handleValidationResult(validationResult(req));
 
-        if (!profile) {
-            return res.status(404).json({
-                msg: 'There is no profile for this user'
-            });
+        try {
+            return res.json(await profileService.getProfile(req.params.user_id));
+        } catch (e) {
+            throw HttpError.builder().statusCode(404).errorMessage(e.message).build();
         }
-
-        return res.json(profile);
-    } catch (err) {
-        if (err.name === 'CastError') {
-            return res.status(404).json({
-                msg: 'There is no profile for this user'
-            });
-        }
-        console.error(err);
-        return res.status(500).send('Server error');
-    }
-}));
+    }));
 
 // @route DELETE api/profile/user/:user_id
 // @desc Delete all profile by user id
 // @access Private
-router.delete('/', auth, wrap(async (req, res) => {
-    // @todo: remove user's posts
+router.delete('/user/:user_id',
+    [
+        auth,
+        [
+            param('user_id').custom(objectIdValidator)
+        ]
+    ],
+    wrap(async (req, res) => {
+        handleValidationResult(validationResult(req));
+        // @todo: remove user's posts
 
-    // Remove profile
-    await Profile.findOneAndRemove({
-        user: req.user.id
-    });
-    await User.findOneAndRemove({
-        _id: req.user.id
-    });
-    return res.json({
-        msg: 'User removed!'
-    });
-}));
+        // Remove profile
+        try {
+            await profileService.removeUserAndProfile(req.params.user_id);
+        } catch (e) {
+            throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
+        }
+        return res.status(204).json({
+            msg: 'User removed!'
+        });
+    }));
 
 // @route PUT api/profile/experience
 // @desc Add profile experience
@@ -161,32 +107,9 @@ router.put('/experience', [
         check('from', 'From date is required').not().isEmpty()
     ]
 ], wrap(async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json(
-            {
-                errors: errors.array()
-            }
-        );
-    }
+    handleValidationResult(validationResult(req));
 
-    const {
-        title, company, location, from, to, current, description
-    } = req.body;
-
-    const newExp = {
-        title, company, location, from, to, current, description
-    };
-
-    const profile = await Profile.findOne({
-        user: req.user.id
-    });
-
-    profile.experience.unshift(newExp);
-    await profile.save();
-
-    return res.json(profile);
-
+    return res.json(profileService.addProfileExperience(req.user.id, req.body));
 }));
 
 // @route DELETE api/profile/experience/:exp_id
@@ -238,8 +161,6 @@ router.put('/education', [
     const profile = await Profile.findOne({
         user: req.user.id
     });
-
-    console.log(profile);
 
     profile.education.unshift(newEducation);
     await profile.save();
