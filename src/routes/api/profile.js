@@ -1,13 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const request = require('request');
-const config = require('config');
-const chalk = require('chalk');
 const { check, validationResult, param } = require('express-validator');
 
 const auth = require('../../middleware/auth');
 const Profile = require('../../models/Profile');
-const User = require('../../models/User');
 const wrap = require('../wrap');
 const handleValidationResult = require('../handleValidationResult');
 
@@ -22,7 +18,7 @@ router.get('/me',
     auth,
     wrap(async (req, res) => {
         try {
-            return res.json(await profileService.getProfile(req.user.user_id));
+            return res.json(await profileService.getProfileWithNameAndAvatar(req.user.user_id));
         } catch (e) {
             throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
         }
@@ -65,7 +61,7 @@ router.get('/user/:user_id',
         handleValidationResult(validationResult(req));
 
         try {
-            return res.json(await profileService.getProfile(req.params.user_id));
+            return res.json(await profileService.getProfileWithNameAndAvatar(req.params.user_id));
         } catch (e) {
             throw HttpError.builder().statusCode(404).errorMessage(e.message).build();
         }
@@ -132,41 +128,25 @@ router.delete('/experience/:exp_id', auth, wrap(async (req, res) => {
 // @route PUT api/profile/education
 // @desc Add profile education
 // @access Private
-router.put('/education', [
-    auth,
+router.put('/education',
     [
-        check('school', 'School is required').not().isEmpty(),
-        check('degree', 'Degree is required').not().isEmpty(),
-        check('fieldOfStudy', 'Field of study is required').not().isEmpty(),
-        check('from', 'Field of study is required').not().isEmpty()
-    ]
-], wrap(async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json(
-            {
-                errors: errors.array()
-            }
-        );
-    }
+        auth,
+        [
+            check('school', 'School is required').not().isEmpty(),
+            check('degree', 'Degree is required').not().isEmpty(),
+            check('fieldOfStudy', 'Field of study is required').not().isEmpty(),
+            check('from', 'Field of study is required').not().isEmpty()
+        ]
+    ],
+    wrap(async (req, res) => {
+        handleValidationResult(validationResult(req));
 
-    const {
-        school, degree, fieldOfStudy, from, to, current, description
-    } = req.body;
-
-    const newEducation = {
-        school, degree, fieldOfStudy, from, to, current, description
-    };
-
-    const profile = await Profile.findOne({
-        user: req.user.id
-    });
-
-    profile.education.unshift(newEducation);
-    await profile.save();
-
-    return res.json(profile);
-}));
+        try {
+            return res.json(await profileService.addProfileEducation(req.user.id, req.body));
+        } catch (e) {
+            throw HttpError.builder().statusCode(400).errorMessage(e.message).build();
+        }
+    }));
 
 // @route DELETE api/profile/education/:edu_id
 // @desc Delete profile education
@@ -186,30 +166,15 @@ router.delete('/education/:edu_id', auth, wrap(async (req, res) => {
 }));
 
 // @route GET api/profile/github/:username
-// @desc Get user repos from Github
+// @desc Get user repositories from Github
 // @access Public
-router.get('/github/:username', (req, res) => {
-    const options = {
-        uri: `https://api.github.com/users/${req.params.username}/repos?per_page=5&sort=creted:asc&client_id=${config.get('githubClientId')}&client_secret=${config.get('githubSecret')}`,
-        method: 'GET',
-        headers: {
-            'user-agent': 'node.js'
+router.get('/github/:username',
+    wrap(async (req, res) => {
+        try {
+            return res.json(await profileService.fetchGithubRepositories(req.params.username));
+        } catch (e) {
+            throw HttpError.builder().statusCode(404).errorMessage(e.message).build();
         }
-    };
-
-    request(options, (error, response, body) => {
-        if (error) {
-            console.log(chalk.red(error));
-        }
-
-        if (response.statusCode !== 200) {
-            return res.status(404).json({
-                msg: 'No Github profile found!'
-            });
-        }
-
-        return res.json(JSON.parse(body));
-    });
-});
+    }));
 
 module.exports = router;
